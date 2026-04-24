@@ -20,6 +20,15 @@ from flax import nnx
 
 class SinusoidalPositionalEncoding(nnx.Module):
     def __init__(self, embedding_dim: int):
+        # Odd sizes silently lose a channel (half = dim // 2, output = 2 * half).
+        # Reject at construction — downstream callers like
+        # MultiEmbodimentActionEncoder depend on the output width matching
+        # the requested embedding_dim exactly.
+        if embedding_dim % 2 != 0:
+            raise ValueError(
+                f"embedding_dim must be even (got {embedding_dim}); "
+                "odd sizes would silently truncate the output to 2·(dim//2)"
+            )
         self.embedding_dim = embedding_dim
 
     def __call__(self, timesteps: jnp.ndarray) -> jnp.ndarray:

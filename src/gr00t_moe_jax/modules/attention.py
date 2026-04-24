@@ -76,6 +76,13 @@ class Attention(nnx.Module):
             mask_value = jnp.finfo(scores.dtype).min
             scores = jnp.where(attention_mask.astype(jnp.bool_), scores, mask_value)
 
+        # Edge case: if every key is masked for some query, softmax(all -inf)
+        # returns a uniform distribution (so the output becomes the mean of V)
+        # rather than zero. This matches PyTorch/diffusers behavior exactly,
+        # which is why we preserve it — switching to zero-output would break
+        # parity. See `tests/parity/test_all_masked_softmax.py` for the pin.
+        # AlternateVLDiT can produce this shape when a batch item has no
+        # image tokens (→ image_attn_mask all False) or no text tokens.
         attn = jnn.softmax(scores, axis=-1)
         out = jnp.einsum("bhqk,bhkd->bhqd", attn, v)  # (B, H, T_q, D)
         out = out.transpose(0, 2, 1, 3).reshape(B, T_q, self.inner_dim)

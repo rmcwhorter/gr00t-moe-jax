@@ -21,7 +21,30 @@ See [PLAN.md](./PLAN.md) for the phase breakdown.
 
 ## Status
 
-Early. Repo created, nothing ported yet. Phase 1 in progress.
+Phase 1 complete — the full action-head stack (DiT, AlternateVLDiT,
+CategorySpecificLinear/MLP, MultiEmbodimentActionEncoder, TimestepEncoder,
+AdaLayerNorm, ActionHead) is ported to Flax NNX and verified bit-exact
+against the PyTorch reference within 1e-5 fp32 tolerance.
+
+## Development
+
+```bash
+# One-time env setup.
+uv venv --python 3.12
+uv sync --extra dev               # shape tests only
+uv sync --extra dev --extra reference  # also enables parity tests (needs torch+diffusers)
+
+# Run tests.
+uv run pytest tests/              # everything
+uv run pytest tests/modules/      # just the shape-level tests
+
+# Parity tests additionally require a local Isaac-GR00T clone:
+git clone https://github.com/NVIDIA/Isaac-GR00T.git ~/repos/robotics/Isaac-GR00T
+GR00T_REF_PATH=~/repos/robotics/Isaac-GR00T uv run pytest tests/parity/
+```
+
+If `GR00T_REF_PATH` is unset and the default location doesn't exist, parity
+tests skip with an explanatory message (not silently pass).
 
 ## License
 

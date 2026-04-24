@@ -27,3 +27,11 @@ def test_zero_timestep_gives_sin_zero_cos_one():
     out = np.asarray(enc(jnp.zeros((1, 1), dtype=jnp.float32)))
     np.testing.assert_allclose(out[0, 0, :16], 0.0, atol=1e-7)
     np.testing.assert_allclose(out[0, 0, 16:], 1.0, atol=1e-7)
+
+
+def test_odd_embedding_dim_rejected():
+    """Odd sizes would silently truncate (output = 2·(dim//2)). Reject at init."""
+    import pytest
+
+    with pytest.raises(ValueError, match="embedding_dim must be even"):
+        SinusoidalPositionalEncoding(embedding_dim=5)
