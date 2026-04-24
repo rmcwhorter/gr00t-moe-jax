@@ -49,7 +49,9 @@ def _copy_dit(pt_mod, jax_mod: DiT) -> None:
     copy_linear(pt_mod.timestep_encoder.timestep_embedder.linear_1, jax_mod.timestep_encoder.linear_1)
     copy_linear(pt_mod.timestep_encoder.timestep_embedder.linear_2, jax_mod.timestep_encoder.linear_2)
     # Each transformer block
-    for pt_block, jax_block in zip(pt_mod.transformer_blocks, jax_mod.transformer_blocks):
+    for pt_block, jax_block in zip(
+        pt_mod.transformer_blocks, jax_mod.transformer_blocks, strict=True
+    ):
         _copy_block(pt_block, jax_block)
     # norm_out: elementwise_affine=False → no params to copy
     # proj_out_1, proj_out_2
@@ -125,6 +127,77 @@ def test_alternate_vl_dit_parity():
             jnp.asarray(ts_np),
             image_mask=jnp.asarray(image_mask_np),
             backbone_attention_mask=jnp.asarray(backbone_mask_np),
+        )
+    )
+
+    np.testing.assert_allclose(jax_out, pt_out, rtol=1e-5, atol=1e-5)
+
+
+def test_dit_parity_with_partial_mask():
+    """Regression: plain DiT should match PyTorch reference even when a
+    non-trivial `encoder_attention_mask` is supplied.
+
+    The PyTorch reference's plain DiT ignores the mask (passes None into
+    blocks), so we must too — otherwise partial masks produce outputs
+    that differ from the reference by arbitrary amounts.
+    """
+    gr00t_dit = _get_torch_dit()
+    TorchDiT = gr00t_dit.DiT
+
+    heads, head_dim = 4, 16
+    inner_dim = heads * head_dim
+    output_dim = 32
+    num_layers = 4
+    cross_dim = 128
+    B, T, S = 2, 8, 12
+
+    torch.manual_seed(42)
+    pt_mod = TorchDiT(
+        num_attention_heads=heads,
+        attention_head_dim=head_dim,
+        output_dim=output_dim,
+        num_layers=num_layers,
+        cross_attention_dim=cross_dim,
+        activation_fn="gelu-approximate",
+        norm_type="ada_norm",
+        interleave_self_attention=True,
+        positional_embeddings=None,
+    )
+    pt_mod.eval()
+    jax_mod = DiT(
+        num_attention_heads=heads,
+        attention_head_dim=head_dim,
+        output_dim=output_dim,
+        num_layers=num_layers,
+        cross_attention_dim=cross_dim,
+        activation_fn="gelu-approximate",
+        norm_type="ada_norm",
+        interleave_self_attention=True,
+        rngs=nnx.Rngs(0),
+    )
+    _copy_dit(pt_mod, jax_mod)
+
+    rng = np.random.default_rng(11)
+    x_np = rng.standard_normal((B, T, inner_dim)).astype(np.float32)
+    enc_np = rng.standard_normal((B, S, cross_dim)).astype(np.float32)
+    ts_np = np.array([200, 800], dtype=np.int64)
+    # Non-trivial padding mask: first half of keys masked out for batch item 0.
+    mask_np = np.ones((B, S), dtype=bool)
+    mask_np[0, : S // 2] = False
+
+    with torch.no_grad():
+        pt_out = pt_mod(
+            torch.from_numpy(x_np),
+            torch.from_numpy(enc_np),
+            torch.from_numpy(ts_np),
+            encoder_attention_mask=torch.from_numpy(mask_np),
+        ).numpy()
+    jax_out = np.asarray(
+        jax_mod(
+            jnp.asarray(x_np),
+            jnp.asarray(enc_np),
+            jnp.asarray(ts_np),
+            encoder_attention_mask=jnp.asarray(mask_np),
         )
     )
 

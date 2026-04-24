@@ -11,17 +11,7 @@ from __future__ import annotations
 import jax.numpy as jnp
 import numpy as np
 import pytest
-import torch
 from flax import nnx
-
-try:
-    from torch import nn  # noqa: F401
-    HAS_TORCH = True
-except ImportError:
-    HAS_TORCH = False
-
-pytestmark = pytest.mark.skipif(not HAS_TORCH, reason="torch not installed")
-
 
 from gr00t_moe_jax.modules.category_specific import CategorySpecificLinear
 from gr00t_moe_jax.weights.converter import (
@@ -30,6 +20,10 @@ from gr00t_moe_jax.weights.converter import (
     copy_linear,
     torch_to_jax,
 )
+
+# Skip entire module if torch isn't installed (lets the shape-only suite
+# still run in minimal `uv sync --extra dev` environments).
+torch = pytest.importorskip("torch")
 
 
 def test_torch_to_jax_roundtrip():

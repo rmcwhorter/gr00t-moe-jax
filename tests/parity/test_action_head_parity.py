@@ -25,7 +25,7 @@ from flax import nnx
 from torch import nn
 
 from gr00t_moe_jax.models.action_head import ActionHead
-from gr00t_moe_jax.weights.converter import copy_linear, torch_to_jax
+from gr00t_moe_jax.weights.converter import torch_to_jax
 from tests.parity.test_dit_parity import _copy_dit
 
 

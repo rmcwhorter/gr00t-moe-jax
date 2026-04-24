@@ -188,5 +188,9 @@ class ActionHead(nnx.Module):
 
         # --- Decode action tokens back to action space ----------------------
         decoded = self.action_decoder(dit_out, embodiment_id)
-        # The state token is prepended — slice it off to get action predictions.
-        return decoded[:, -self.action_horizon :]
+        # Slice by the ACTUAL input action length, not `self.action_horizon`.
+        # The reference uses `pred[:, -actions.shape[1]:]` (gr00t_n1d7.py:259);
+        # using `self.action_horizon` would leak the state token into the
+        # output whenever `noisy_action.shape[1]` < `self.action_horizon`.
+        input_horizon = noisy_action.shape[1]
+        return decoded[:, -input_horizon:]

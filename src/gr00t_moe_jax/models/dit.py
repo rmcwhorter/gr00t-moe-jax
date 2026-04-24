@@ -26,8 +26,8 @@ import jax
 import jax.numpy as jnp
 from flax import nnx
 
-from gr00t_moe_jax.modules.transformer_block import BasicTransformerBlock
 from gr00t_moe_jax.modules.timestep import TimestepEncoder
+from gr00t_moe_jax.modules.transformer_block import BasicTransformerBlock
 
 
 class DiT(nnx.Module):
@@ -125,8 +125,16 @@ class DiT(nnx.Module):
         encoder_hidden_states: jnp.ndarray,  # (B, S, cross_attention_dim)
         timestep: jnp.ndarray,  # (B,)
         *,
-        encoder_attention_mask: jnp.ndarray | None = None,
+        encoder_attention_mask: jnp.ndarray | None = None,  # noqa: ARG002 — see comment
     ) -> jnp.ndarray:
+        # NOTE: the PyTorch reference's plain DiT accepts `encoder_attention_mask`
+        # but then unconditionally passes `encoder_attention_mask=None` into its
+        # blocks (gr00t/model/modules/dit.py:324). We mirror that to preserve
+        # bit-exact parity — passing the mask through would diverge from the
+        # reference by arbitrary amounts when callers supply real padding masks.
+        # AlternateVLDiT below is the code path that actually uses masks.
+        del encoder_attention_mask
+
         temb = self.timestep_encoder(timestep)
 
         for idx, block in enumerate(self.transformer_blocks):
@@ -134,12 +142,12 @@ class DiT(nnx.Module):
                 # Self-attention block.
                 hidden_states = block(hidden_states, temb=temb)
             else:
-                # Cross-attention block.
+                # Cross-attention block — mask intentionally None (see above).
                 hidden_states = block(
                     hidden_states,
                     temb=temb,
                     encoder_hidden_states=encoder_hidden_states,
-                    encoder_attention_mask=encoder_attention_mask,
+                    encoder_attention_mask=None,
                 )
 
         return self._apply_output_head(hidden_states, temb)
@@ -180,10 +188,7 @@ class AlternateVLDiT(DiT):
                 hidden_states = block(hidden_states, temb=temb)
             else:
                 # Cross-attention block — alternate between text and image.
-                if idx % period == 0:
-                    curr_mask = text_attn_mask
-                else:
-                    curr_mask = image_attn_mask
+                curr_mask = text_attn_mask if idx % period == 0 else image_attn_mask
                 hidden_states = block(
                     hidden_states,
                     temb=temb,
