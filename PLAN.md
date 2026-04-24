@@ -25,7 +25,21 @@ The DiT itself is modest — 16 blocks of {AdaLN, attention, FFN}. Mechanical po
 - [x] `AlternateVLDiT` variant (image/text cross-attention alternation)
 - [x] `ActionHead` (glues encoders, DiT, position embedding, vlln)
 - [x] Shape-level unit tests (42 passing)
+- [x] **Numerical parity tests against PyTorch reference** — 14 passing
+      (AdaLayerNorm, Attention ×2, FeedForward ×2, CategorySpecific ×2,
+       ActionEncoder, TimestepEncoder, TransformerBlock ×2, DiT ×2, ActionHead)
+      All modules match PyTorch within 1e-5 fp32 tolerance.
 - [ ] `compute_loss` / `sample_actions` flow-matching wrappers (Phase 3)
+
+## Weight loading (done alongside Phase 1)
+
+- [x] PyTorch → Flax NNX converter utilities (`gr00t_moe_jax/weights/converter.py`)
+- [x] Direct-file import of reference modules via importlib (sidesteps
+      GR00T's transformers-5.x dataclass incompatibility)
+- [x] Reconstructable PyTorch ActionHead equivalent from primitives (since
+      the top-level `Gr00tN1d7ActionHead` isn't directly importable)
+- [ ] Full N1.7 HuggingFace checkpoint loader (needs real nvidia/* weights;
+      deferred until we need end-to-end inference)
 
 ## Phase 2 — Port the Qwen3-VL backbone (1–3 weeks)
 
