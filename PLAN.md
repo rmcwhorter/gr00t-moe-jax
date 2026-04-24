@@ -45,12 +45,39 @@ The DiT itself is modest — 16 blocks of {AdaLN, attention, FFN}. Mechanical po
 
 Cosmos-Reason2-2B is stock `Qwen3VLForConditionalGeneration` — not a custom NVIDIA fork.
 
-- [ ] Text transformer: RoPE + NTK scaling, GQA, SwiGLU, RMSNorm, tied embeddings
-- [ ] Vision tower (Qwen3-VL native-aspect-ratio ViT)
-- [ ] Image/text token interleaving + attention mask construction
-- [ ] KV cache for inference (Flax scan-based implementation)
-- [ ] Weight converter: HuggingFace safetensors → Flax pytree
-- [ ] Numerical parity tests vs HuggingFace `transformers` Qwen3-VL (fp32 tolerance)
+### Phase 2.1 — Text transformer (done)
+
+- [x] `RMSNorm` (Qwen2/Qwen3 RMSNorm, fp32 variance + cast back)
+- [x] `Qwen3MLP` (SwiGLU: gate × up → down, bias-free)
+- [x] RoPE: `compute_default_inv_freq`, `RotaryEmbedding`, `rotate_half`, `apply_rotary_pos_emb`
+- [x] `Qwen3Attention` (GQA + per-head RMSNorm on Q/K, additive mask, fp32 softmax)
+- [x] `Qwen3DecoderLayer` (pre-norm residual, attn + mlp)
+- [x] `Qwen3Model` (embed + N layers + final norm, with `select_layer` truncation for GR00T's layer-12 cut)
+- [x] **Parity vs HF Qwen3** (9 parity tests, all bit-exact within 1e-5 fp32):
+      RMSNorm, MLP, RoPE ×2, Attention MHA + GQA, DecoderLayer, Model full, Model truncated
+
+*Deferred:* NTK frequency scaling, sliding-window attention, KV cache
+(not needed — GR00T treats the backbone as a frozen feature extractor,
+and Cosmos-Reason2-2B uses full attention everywhere).
+
+### Phase 2.2 — Vision tower (next)
+
+- [ ] Qwen3-VL native-aspect-ratio ViT
+- [ ] Patch embedding + 2D position encoding
+- [ ] Vision attention (no GQA, no q_norm/k_norm — differs from text side)
+- [ ] Vision-to-language projection
+
+### Phase 2.3 — Multimodal integration
+
+- [ ] Image/text token interleaving: `<image>` → expanded patch tokens
+- [ ] Attention-mask construction for mixed-modality sequences
+- [ ] Full `Qwen3VLForConditionalGeneration` wrapper (feature-extraction flavor)
+
+### Phase 2.4 — Checkpoint loading + end-to-end parity
+
+- [ ] HF safetensors → Flax pytree converter for `nvidia/Cosmos-Reason2-2B`
+- [ ] End-to-end parity test: same (image + text) input through HF model and
+      our JAX port should produce identical hidden states at `select_layer=12`
 
 ## Phase 3 — End-to-end dense inference (1 week)
 
