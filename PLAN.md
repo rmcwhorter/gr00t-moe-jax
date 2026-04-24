@@ -14,14 +14,18 @@ Phased plan. Each phase has a concrete deliverable that unblocks the next.
 
 The DiT itself is modest — 16 blocks of {AdaLN, attention, FFN}. Mechanical port.
 
-- [ ] `BasicTransformerBlock` in Flax NNX (self/cross-attention + GeGLU FFN + AdaLN)
-- [ ] `AdaLayerNorm` with timestep conditioning
-- [ ] `TimestepEncoder` (sinusoidal pos embed → MLP)
-- [ ] `DiT` top-level module (16 blocks, 32 heads × 48 head_dim = 1536 inner)
-- [ ] `AlternateVLDiT` variant (every-other-block text attention)
-- [ ] `MultiEmbodimentActionEncoder` / `CategorySpecificLinear` / `CategorySpecificMLP`
-- [ ] Sinusoidal position embedding
-- [ ] Unit tests against randomly-initialized parity with PyTorch
+- [x] `CategorySpecificLinear` / `CategorySpecificMLP`
+- [x] `MultiEmbodimentActionEncoder` (including sinusoidal timestep broadcast)
+- [x] `AdaLayerNorm` with timestep conditioning
+- [x] `TimestepEncoder` (Timesteps + MLP, matching diffusers' pipeline)
+- [x] `FeedForward` (supports gelu / gelu-approximate / geglu)
+- [x] `Attention` (self and cross, with encoder padding mask)
+- [x] `BasicTransformerBlock` (single-attention + FFN layout, matches GR00T)
+- [x] `DiT` top-level (16 blocks, 32 heads × 48 head_dim = 1536 inner, 1024 out)
+- [x] `AlternateVLDiT` variant (image/text cross-attention alternation)
+- [x] `ActionHead` (glues encoders, DiT, position embedding, vlln)
+- [x] Shape-level unit tests (42 passing)
+- [ ] `compute_loss` / `sample_actions` flow-matching wrappers (Phase 3)
 
 ## Phase 2 — Port the Qwen3-VL backbone (1–3 weeks)
 
