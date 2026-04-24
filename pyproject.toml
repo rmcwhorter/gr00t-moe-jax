@@ -1,0 +1,60 @@
+[project]
+name = "gr00t-moe-jax"
+version = "0.0.1"
+description = "JAX/Flax port of GR00T N1.7 with sparse-upcycled MoE action DiT."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [{ name = "Ryan McWhorter" }]
+
+dependencies = [
+    "jax>=0.4.35",
+    "jaxlib>=0.4.35",
+    "flax>=0.10.0",
+    "einops>=0.8.0",
+    "numpy>=1.26",
+    "safetensors>=0.4",
+    "optax>=0.2",
+    "chex>=0.1.87",
+    "tyro>=0.9",
+]
+
+[project.optional-dependencies]
+# For numerical-parity testing against the HuggingFace PyTorch reference.
+reference = [
+    "torch>=2.5",
+    "transformers>=4.52",
+    "accelerate>=1.0",
+]
+
+# CUDA runtime for training. Install explicitly with:
+#   pip install "gr00t-moe-jax[cuda]"
+cuda = [
+    "jax[cuda12]>=0.4.35",
+]
+
+dev = [
+    "pytest>=8",
+    "pytest-xdist>=3",
+    "ruff>=0.7",
+    "ipython>=8",
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra -q"
